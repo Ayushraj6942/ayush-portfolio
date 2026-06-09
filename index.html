@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -128,19 +128,19 @@
       <!-- Quick stats -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-20 reveal">
         <div class="glass rounded-2xl stat-card card">
-          <div class="stat-number" data-target="3946">0</div>
+          <div class="stat-number">3,946</div>
           <div class="stat-label">JEE Advanced AIR</div>
         </div>
         <div class="glass rounded-2xl stat-card card">
-          <div class="stat-number" data-target="6.6">0</div>
+          <div class="stat-number">6.6</div>
           <div class="stat-label">CPI at IIT Kanpur</div>
         </div>
         <div class="glass rounded-2xl stat-card card">
-          <div class="stat-number" data-target="30">0</div>
+          <div class="stat-number">30+</div>
           <div class="stat-label">Team Members Led</div>
         </div>
         <div class="glass rounded-2xl stat-card card">
-          <div class="stat-number" data-target="7">0</div>
+          <div class="stat-number">7</div>
           <div class="stat-label">Key Projects</div>
         </div>
       </div>
@@ -686,72 +686,62 @@
       });
     });
 
-    /* Scroll reveal */
+    /* Scroll reveal — opacity fade, runs once per element */
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const revealEls = document.querySelectorAll('.reveal');
-    const revealObserver = new IntersectionObserver(
-      (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
-    );
-    revealEls.forEach(el => revealObserver.observe(el));
 
-    /* Hero stats visible on load */
-    document.querySelectorAll('#hero .reveal').forEach(el => {
-      setTimeout(() => el.classList.add('visible'), 200);
-    });
-
-    /* Animated counters */
-    function animateCounter(el) {
-      const target = parseFloat(el.dataset.target);
-      const isDecimal = target % 1 !== 0;
-      const duration = 1800;
-      const start = performance.now();
-
-      function step(now) {
-        const progress = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const current = eased * target;
-        el.textContent = isDecimal ? current.toFixed(1) : Math.floor(current).toLocaleString();
-        if (progress < 1) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
+    if (prefersReducedMotion) {
+      revealEls.forEach(el => el.classList.add('visible'));
+    } else {
+      const revealObserver = new IntersectionObserver(
+        (entries, observer) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.08, rootMargin: '0px 0px -24px 0px' }
+      );
+      revealEls.forEach(el => revealObserver.observe(el));
     }
 
-    const statObserver = new IntersectionObserver(
-      (entries) => entries.forEach(e => {
-        if (e.isIntersecting && !e.target.dataset.counted) {
-          e.target.dataset.counted = 'true';
-          animateCounter(e.target);
-        }
-      }),
-      { threshold: 0.5 }
-    );
-    document.querySelectorAll('.stat-number').forEach(el => statObserver.observe(el));
-
-    /* Active nav link on scroll */
+    /* Single throttled scroll handler — avoids repeated layout reads */
     const sections = document.querySelectorAll('section[id]');
     const navLinks = document.querySelectorAll('.nav-link');
+    const backToTop = document.getElementById('back-to-top');
+    const navbar = document.getElementById('navbar');
+    let scrollTicking = false;
 
-    window.addEventListener('scroll', () => {
+    function handleScroll() {
+      const scrollY = window.scrollY;
+
+      backToTop.classList.toggle('show', scrollY > 400);
+      navbar.classList.toggle('scrolled', scrollY > 10);
+
       let current = '';
-      sections.forEach(section => {
-        if (window.scrollY >= section.offsetTop - 120) current = section.id;
-      });
+      for (const section of sections) {
+        if (scrollY >= section.offsetTop - 120) current = section.id;
+      }
       navLinks.forEach(link => {
         link.classList.toggle('active', link.getAttribute('href') === `#${current}`);
       });
-    });
 
-    /* Back to top */
-    const backToTop = document.getElementById('back-to-top');
-    window.addEventListener('scroll', () => {
-      backToTop.classList.toggle('show', window.scrollY > 400);
-    });
-    backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      scrollTicking = false;
+    }
 
-    /* Navbar shadow on scroll */
-    const navbar = document.getElementById('navbar');
     window.addEventListener('scroll', () => {
-      navbar.style.boxShadow = window.scrollY > 10 ? '0 4px 30px rgba(0,0,0,0.3)' : 'none';
+      if (!scrollTicking) {
+        scrollTicking = true;
+        requestAnimationFrame(handleScroll);
+      }
+    }, { passive: true });
+
+    handleScroll();
+
+    backToTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
     });
   </script>
 
